@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============ Conta / Auth ============
+
+enum UserRole {
+  ADMIN
+  AGRICULTOR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  telefone  String?
+  role      UserRole @default(AGRICULTOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Cada agricultor tem uma propriedade (multi-tenant: dono dos próprios dados)
+  propriedade Propriedade?
+
+  @@map("users")
+}
+
+// ============ Propriedade (raiz dos dados de cada agricultor) ============
+
+model Propriedade {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  nome               String
+  municipio          String?
+  uf                 String?
+  areaHa             Float?
+  atividadePrincipal String?
+  // Coordenadas p/ previsão do tempo (Open-Meteo). Preenchidas por geocoding.
+  latitude           Float?
+  longitude          Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  producoes Producao[]
+  despesas  Despesa[]
+  vendas    Venda[]
+  clientes  Cliente[]
+
+  @@index([deletedAt])
+  @@map("propriedades")
+}
+
+// ============ Produção (plantios / colheitas) ============
+
+enum StatusProducao {
+  PLANTADO
+  EM_CRESCIMENTO
+  COLHIDO
+  PERDIDO
+}
+
+model Producao {
+  id                   String         @id @default(cuid())
+  propriedadeId        String
+  cultura              String // ex: Milho, Feijão, Mandioca, Soja
+  variedade            String?
+  areaHa               Float?
+  dataPlantio          DateTime?
+  dataColheitaPrevista DateTime?
+  dataColheita         DateTime?
+  quantidadeColhida    Float?
+  unidade              String? // sacas, kg, ton
+  status               StatusProducao @default(PLANTADO)
+  observacao           String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  deletedAt            DateTime?
+
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
+  despesas    Despesa[]
+
+  @@index([propriedadeId])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([deletedAt, dataPlantio(sort: Desc)])
+  @@map("producoes")
+}
+
+// ============ Despesas (controle de gastos) ============
+
+enum CategoriaDespesa {
+  SEMENTE
+  FERTILIZANTE
+  DEFENSIVO
+  MAO_DE_OBRA
+  COMBUSTIVEL
+  MAQUINARIO
+  TRANSPORTE
+  ENERGIA
+  AGUA
+  MANUTENCAO
+  OUTRO
+}
+
+model Despesa {
+  id            String           @id @default(cuid())
+  propriedadeId String
+  descricao     String
+  categoria     CategoriaDespesa @default(OUTRO)
+  valor         Float
+  data          DateTime
+  producaoId    String? // opcional: vincular gasto a uma produção
+  observacao    String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  deletedAt     DateTime?
+
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
+  producao    Producao?   @relation(fields: [producaoId], references: [id], onDelete: SetNull)
+
+  @@index([propriedadeId])
+  @@index([categoria])
+  @@index([producaoId])
+  @@index([deletedAt])
+  @@index([deletedAt, data(sort: Desc)])
+  @@map("despesas")
+}
+
+// ============ Clientes ============
+
+model Cliente {
+  id            String   @id @default(cuid())
+  propriedadeId String
+  nome          String
+  telefone      String?
+  observacao    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
+  vendas      Venda[]
+
+  @@index([propriedadeId])
+  @@index([deletedAt])
+  @@map("clientes")
+}
+
+// ============ Vendas (comercialização) ============
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  CARTAO
+  BOLETO
+  PRAZO
+}
+
+model Venda {
+  id             String         @id @default(cuid())
+  propriedadeId  String
+  produto        String
+  quantidade     Float
+  unidade        String? // sacas, kg, ton, caixas
+  valorUnitario  Float
+  valorTotal     Float // sempre calculado no servidor (quantidade * valorUnitario)
+  data           DateTime
+  formaPagamento FormaPagamento @default(DINHEIRO)
+  clienteId      String?
+  observacao     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
+  cliente     Cliente?    @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  @@index([propriedadeId])
+  @@index([clienteId])
+  @@index([deletedAt])
+  @@index([deletedAt, data(sort: Desc)])
+  @@map("vendas")
+}
