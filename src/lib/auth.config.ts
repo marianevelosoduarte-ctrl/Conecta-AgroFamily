@@ -9,6 +9,8 @@ export type UserRole = "ADMIN" | "AGRICULTOR";
    ———————————————————————————————————————————— */
 
 export const authConfig: NextAuthConfig = {
+  // Necessário em hosts não-Vercel (ex: Railway): confia no host da requisição
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
