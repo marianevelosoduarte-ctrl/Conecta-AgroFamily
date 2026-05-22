@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# lockfile não versionado: gerado no Windows, quebra o `npm ci` (Linux) no Railway
+/package-lock.json
 /.pnp
 .pnp.*
 .yarn/*
