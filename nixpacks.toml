@@ -1,0 +1,6 @@
+# Railway/Nixpacks — usa `npm install` em vez de `npm ci`.
+# O package-lock.json é gerado no Windows e o `npm ci` (estrito) falha ao
+# instalar deps opcionais específicas de Linux (ex: @emnapi/*, do lightningcss).
+# `npm install` resolve corretamente por plataforma no build do Railway.
+[phases.install]
+cmds = ["npm install --include=optional"]
