@@ -135,7 +135,10 @@ export default function AjustesPage() {
           <Button
             variant="outline"
             className="mt-5 text-destructive hover:text-destructive"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = "/login";
+            }}
           >
             <LogOut className="h-4 w-4" />
             Sair da conta
