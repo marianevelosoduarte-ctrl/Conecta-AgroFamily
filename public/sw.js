@@ -6,7 +6,7 @@
    nem rotas de autenticação.
    ———————————————————————————————————————————— */
 
-const CACHE = "agrofamily-v1";
+const CACHE = "agrofamily-v2";
 
 self.addEventListener("install", () => {
   // Ativa a nova versão imediatamente

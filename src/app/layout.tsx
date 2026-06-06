@@ -22,10 +22,6 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Agrofamily",
   },
-  icons: {
-    icon: "/icon.png",
-    apple: "/icons/apple-touch-icon.png",
-  },
 };
 
 export const viewport: Viewport = {
