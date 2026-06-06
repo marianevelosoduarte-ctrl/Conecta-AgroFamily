@@ -28,6 +28,7 @@ export function useClientes() {
 }
 
 function buildPayload(f: VendaFormValues) {
+  const ehNovo = f.clienteId === "new";
   return {
     produto: f.produto.trim(),
     quantidade: f.quantidade ? parseFloat(String(f.quantidade).replace(",", ".")) : 0,
@@ -37,7 +38,8 @@ function buildPayload(f: VendaFormValues) {
       : 0,
     data: f.data,
     formaPagamento: f.formaPagamento,
-    clienteId: f.clienteId || null,
+    clienteId: ehNovo ? null : f.clienteId || null,
+    novoClienteNome: ehNovo ? f.novoClienteNome?.trim() || null : null,
     observacao: f.observacao.trim() || null,
   };
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkApiAuth } from "@/lib/api-auth";
 import { toDateSafe } from "@/lib/utils";
+import { resolveClienteId } from "@/lib/resolve-cliente";
 
 // GET /api/vendas — lista as vendas da propriedade
 export async function GET() {
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
       data,
       formaPagamento,
       clienteId,
+      novoClienteNome,
       observacao,
     } = body;
 
@@ -44,6 +46,13 @@ export async function POST(request: NextRequest) {
     const qtd = Number(quantidade);
     const unit = Number(valorUnitario);
 
+    // Cliente novo cadastrado junto com a venda (suporta o fluxo offline).
+    const finalClienteId = await resolveClienteId(
+      propriedadeId,
+      clienteId,
+      novoClienteNome
+    );
+
     const venda = await prisma.venda.create({
       data: {
         propriedadeId,
@@ -54,7 +63,7 @@ export async function POST(request: NextRequest) {
         valorTotal: qtd * unit, // sempre derivado
         data: toDateSafe(data),
         formaPagamento: formaPagamento || "DINHEIRO",
-        clienteId: clienteId || null,
+        clienteId: finalClienteId,
         observacao: observacao?.trim() || null,
       },
       include: { cliente: { select: { id: true, nome: true } } },

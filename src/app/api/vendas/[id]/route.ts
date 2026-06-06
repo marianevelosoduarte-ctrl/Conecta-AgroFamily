@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkApiAuth } from "@/lib/api-auth";
 import { toDateSafe } from "@/lib/utils";
+import { resolveClienteId } from "@/lib/resolve-cliente";
 
 export async function PUT(
   request: NextRequest,
@@ -29,11 +30,19 @@ export async function PUT(
       data,
       formaPagamento,
       clienteId,
+      novoClienteNome,
       observacao,
     } = body;
 
     const qtd = quantidade !== undefined ? Number(quantidade) : existing.quantidade;
     const unit = valorUnitario !== undefined ? Number(valorUnitario) : existing.valorUnitario;
+
+    // Se veio um cliente novo (nome), cria e usa o id dele.
+    const temClienteNovo =
+      typeof novoClienteNome === "string" && novoClienteNome.trim().length > 0;
+    const resolvedClienteId = temClienteNovo
+      ? await resolveClienteId(propriedadeId, clienteId, novoClienteNome)
+      : clienteId;
 
     const venda = await prisma.venda.update({
       where: { id },
@@ -48,7 +57,9 @@ export async function PUT(
         }),
         ...(data !== undefined && { data: toDateSafe(data) }),
         ...(formaPagamento !== undefined && { formaPagamento }),
-        ...(clienteId !== undefined && { clienteId: clienteId || null }),
+        ...((resolvedClienteId !== undefined || temClienteNovo) && {
+          clienteId: resolvedClienteId || null,
+        }),
         ...(observacao !== undefined && { observacao: observacao?.trim() || null }),
       },
       include: { cliente: { select: { id: true, nome: true } } },

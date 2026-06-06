@@ -28,6 +28,8 @@ export interface VendaFormValues {
   data: string;
   formaPagamento: FormaPagamento;
   clienteId: string;
+  /** Nome de um cliente novo a cadastrar junto da venda (clienteId === "new"). */
+  novoClienteNome?: string;
   observacao: string;
 }
 

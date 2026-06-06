@@ -179,6 +179,7 @@ interface VendaPayload {
   data: string;
   formaPagamento: Venda["formaPagamento"];
   clienteId: string | null;
+  novoClienteNome: string | null;
   observacao: string | null;
 }
 
@@ -209,7 +210,6 @@ export function registerOfflineMutations(qc: QueryClient) {
   registerEntity<Despesa, DespesaPayload>(qc, {
     key: "despesas",
     endpoint: "/api/despesas",
-    extraInvalidate: ["dashboard"],
     messages: {
       created: "Despesa registrada.",
       updated: "Despesa atualizada.",
@@ -249,7 +249,8 @@ export function registerOfflineMutations(qc: QueryClient) {
   registerEntity<Venda, VendaPayload>(qc, {
     key: "vendas",
     endpoint: "/api/vendas",
-    extraInvalidate: ["dashboard"],
+    // revalida clientes: um cliente novo pode ter sido criado junto da venda
+    extraInvalidate: ["clientes"],
     messages: {
       created: "Venda registrada.",
       updated: "Venda atualizada.",
@@ -272,7 +273,12 @@ export function registerOfflineMutations(qc: QueryClient) {
         formaPagamento: p.formaPagamento,
         clienteId: p.clienteId,
         observacao: p.observacao,
-        cliente: cli ? { id: cli.id, nome: cli.nome } : null,
+        // mostra o nome do cliente novo na hora, mesmo antes de sincronizar
+        cliente: cli
+          ? { id: cli.id, nome: cli.nome }
+          : p.novoClienteNome
+            ? { id: tempId, nome: p.novoClienteNome }
+            : null,
       };
     },
     applyUpdate: (item, p) => ({
@@ -286,6 +292,9 @@ export function registerOfflineMutations(qc: QueryClient) {
       formaPagamento: p.formaPagamento,
       clienteId: p.clienteId,
       observacao: p.observacao,
+      cliente: p.novoClienteNome
+        ? { id: item.id, nome: p.novoClienteNome }
+        : item.cliente,
     }),
   });
 
@@ -293,7 +302,6 @@ export function registerOfflineMutations(qc: QueryClient) {
   registerEntity<Producao, ProducaoPayload>(qc, {
     key: "producoes",
     endpoint: "/api/producoes",
-    extraInvalidate: ["dashboard"],
     messages: {
       created: "Produção registrada.",
       updated: "Produção atualizada.",

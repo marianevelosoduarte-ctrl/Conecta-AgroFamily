@@ -43,12 +43,7 @@ import {
 } from "@/components/ui/month-picker";
 import { FORMA_PAGAMENTO, UNIDADES_MEDIDA, toOptions } from "@/lib/constants";
 import { formatBRL, formatNumber } from "@/lib/utils";
-import {
-  useVendas,
-  useClientes,
-  useVendaMutations,
-  useCreateCliente,
-} from "@/features/vendas/hooks";
+import { useVendas, useClientes, useVendaMutations } from "@/features/vendas/hooks";
 import { EMPTY_VENDA, type Venda, type VendaFormValues } from "@/features/vendas/types";
 
 const PAGAMENTO_OPTIONS = toOptions(FORMA_PAGAMENTO);
@@ -57,7 +52,6 @@ export function VendasClient() {
   const { data: vendas = [], isLoading } = useVendas();
   const { data: clientes = [] } = useClientes();
   const { create, update, remove } = useVendaMutations();
-  const createCliente = useCreateCliente();
 
   const [ym, setYm] = useState<YearMonth | null>(thisMonth());
   const [open, setOpen] = useState(false);
@@ -113,28 +107,15 @@ export function VendasClient() {
     setOpen(true);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const offline = !onlineManager.isOnline();
-    let formToSave = form;
-
-    // Cadastro rápido de cliente novo
-    if (form.clienteId === "new") {
-      if (offline) {
-        // Sem internet não dá pra obter o id do cliente novo: salva sem vincular.
-        formToSave = { ...form, clienteId: "" };
-        toast.message("Sem internet: a venda será salva sem vincular o novo cliente.");
-      } else if (novoCliente.trim()) {
-        try {
-          const c = await createCliente.mutateAsync({ nome: novoCliente.trim() });
-          formToSave = { ...form, clienteId: c.id };
-        } catch {
-          return;
-        }
-      } else {
-        formToSave = { ...form, clienteId: "" };
-      }
-    }
+    // Cliente novo é cadastrado no mesmo request da venda (funciona online e
+    // offline): o servidor cria o cliente quando recebe "novoClienteNome".
+    const formToSave: VendaFormValues = {
+      ...form,
+      novoClienteNome: form.clienteId === "new" ? novoCliente.trim() : "",
+    };
 
     const onDone = { onSuccess: () => setOpen(false) };
     if (editingId) update.mutate({ id: editingId, form: formToSave }, onDone);
@@ -145,7 +126,7 @@ export function VendasClient() {
     }
   }
 
-  const saving = create.isPending || update.isPending || createCliente.isPending;
+  const saving = create.isPending || update.isPending;
 
   return (
     <div>

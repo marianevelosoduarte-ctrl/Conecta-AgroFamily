@@ -1,24 +1,36 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useVendas } from "@/features/vendas/hooks";
+import { useDespesas } from "@/features/despesas/hooks";
+import { useProducoes } from "@/features/producao/hooks";
+import { computeDashboard, type DashboardData } from "./compute";
 
-export interface DashboardData {
-  receita: { total: number; mes: number };
-  despesa: { total: number; mes: number };
-  lucro: { total: number; mes: number };
-  serie: { mes: string; receita: number; despesa: number }[];
-  categorias: { nome: string; valor: number }[];
-  producao: { total: number; ativas: number; area: number };
-  contagem: { vendas: number; despesas: number };
-}
+export type { DashboardData };
 
+/* O painel é derivado das listas (vendas/despesas/produções) que já ficam
+   em cache. Assim ele funciona offline e reflete na hora os lançamentos
+   feitos sem internet, sem depender de /api/dashboard. */
 export function useDashboard() {
-  return useQuery<DashboardData>({
-    queryKey: ["dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/dashboard");
-      if (!res.ok) throw new Error("Erro ao carregar o painel");
-      return res.json();
-    },
-  });
+  const vendas = useVendas();
+  const despesas = useDespesas();
+  const producoes = useProducoes();
+
+  const data = useMemo(
+    () =>
+      computeDashboard(
+        vendas.data ?? [],
+        despesas.data ?? [],
+        producoes.data ?? []
+      ),
+    [vendas.data, despesas.data, producoes.data]
+  );
+
+  // "Carregando" só enquanto não há nada em cache ainda
+  const isLoading =
+    (vendas.isLoading && !vendas.data) ||
+    (despesas.isLoading && !despesas.data) ||
+    (producoes.isLoading && !producoes.data);
+
+  return { data, isLoading };
 }
