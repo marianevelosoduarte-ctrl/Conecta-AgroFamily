@@ -34,6 +34,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  MonthPicker,
+  thisMonth,
+  isSameMonth,
+  type YearMonth,
+} from "@/components/ui/month-picker";
 import { CATEGORIA_DESPESA, toOptions } from "@/lib/constants";
 import { formatBRL } from "@/lib/utils";
 import { useDespesas, useDespesaMutations } from "@/features/despesas/hooks";
@@ -55,6 +61,7 @@ export function DespesasClient() {
   });
 
   const [filtro, setFiltro] = useState<string>("all");
+  const [ym, setYm] = useState<YearMonth | null>(thisMonth());
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<DespesaFormValues>(EMPTY_DESPESA);
@@ -64,23 +71,24 @@ export function DespesasClient() {
     setForm((f) => ({ ...f, [k]: v }));
 
   const lista = useMemo(
-    () => (filtro === "all" ? despesas : despesas.filter((d) => d.categoria === filtro)),
-    [despesas, filtro]
+    () =>
+      despesas.filter(
+        (d) =>
+          (ym === null || isSameMonth(d.data, ym)) &&
+          (filtro === "all" || d.categoria === filtro)
+      ),
+    [despesas, filtro, ym]
   );
 
   const kpis = useMemo(() => {
-    const now = new Date();
     let total = 0;
-    let mes = 0;
+    let periodo = 0;
     for (const d of despesas) {
       total += d.valor;
-      const dt = new Date(d.data);
-      if (dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear()) {
-        mes += d.valor;
-      }
+      if (ym === null || isSameMonth(d.data, ym)) periodo += d.valor;
     }
-    return { total, mes, count: despesas.length };
-  }, [despesas]);
+    return { total, periodo, count: lista.length };
+  }, [despesas, ym, lista]);
 
   function openNew() {
     setEditingId(null);
@@ -125,14 +133,14 @@ export function DespesasClient() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
-          title="Total gasto"
+          title="Total gasto (geral)"
           value={formatBRL(kpis.total)}
           icon={Wallet}
           iconClass="bg-destructive/10 text-destructive"
         />
         <KpiCard
-          title="Gasto neste mês"
-          value={formatBRL(kpis.mes)}
+          title={ym ? "Gasto no mês" : "Gasto no período"}
+          value={formatBRL(kpis.periodo)}
           icon={CalendarDays}
           iconClass="bg-warning/10 text-warning"
         />
@@ -144,26 +152,29 @@ export function DespesasClient() {
         />
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Categoria:</span>
-        <Select value={filtro} onValueChange={setFiltro}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {CATEGORIA_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <MonthPicker value={ym} onChange={setYm} />
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Categoria:</span>
+          <Select value={filtro} onValueChange={setFiltro}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {CATEGORIA_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (
         <p className="py-10 text-center text-muted-foreground">Carregando...</p>
-      ) : lista.length === 0 ? (
+      ) : despesas.length === 0 ? (
         <EmptyState
           icon={Receipt}
           title="Nenhuma despesa por aqui"
@@ -175,6 +186,10 @@ export function DespesasClient() {
             </Button>
           }
         />
+      ) : lista.length === 0 ? (
+        <p className="py-10 text-center text-muted-foreground">
+          Nenhuma despesa {ym ? "neste mês" : "com esse filtro"}.
+        </p>
       ) : (
         <div className="space-y-3">
           {lista.map((d) => (

@@ -33,6 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  MonthPicker,
+  thisMonth,
+  isSameMonth,
+  type YearMonth,
+} from "@/components/ui/month-picker";
 import { FORMA_PAGAMENTO, UNIDADES_MEDIDA, toOptions } from "@/lib/constants";
 import { formatBRL, formatNumber } from "@/lib/utils";
 import {
@@ -51,6 +57,7 @@ export function VendasClient() {
   const { create, update, remove } = useVendaMutations();
   const createCliente = useCreateCliente();
 
+  const [ym, setYm] = useState<YearMonth | null>(thisMonth());
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<VendaFormValues>(EMPTY_VENDA);
@@ -60,19 +67,20 @@ export function VendasClient() {
   const set = <K extends keyof VendaFormValues>(k: K, v: VendaFormValues[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  const lista = useMemo(
+    () => vendas.filter((v) => ym === null || isSameMonth(v.data, ym)),
+    [vendas, ym]
+  );
+
   const kpis = useMemo(() => {
-    const now = new Date();
     let total = 0;
-    let mes = 0;
+    let periodo = 0;
     for (const v of vendas) {
       total += v.valorTotal;
-      const dt = new Date(v.data);
-      if (dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear()) {
-        mes += v.valorTotal;
-      }
+      if (ym === null || isSameMonth(v.data, ym)) periodo += v.valorTotal;
     }
-    return { total, mes, count: vendas.length };
-  }, [vendas]);
+    return { total, periodo, count: lista.length };
+  }, [vendas, ym, lista]);
 
   const totalPreview = useMemo(() => {
     const q = parseFloat(String(form.quantidade).replace(",", ".")) || 0;
@@ -141,14 +149,14 @@ export function VendasClient() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
-          title="Total vendido"
+          title="Total vendido (geral)"
           value={formatBRL(kpis.total)}
           icon={TrendingUp}
           iconClass="bg-primary/10 text-primary"
         />
         <KpiCard
-          title="Vendas neste mês"
-          value={formatBRL(kpis.mes)}
+          title={ym ? "Vendas no mês" : "Vendas no período"}
+          value={formatBRL(kpis.periodo)}
           icon={CalendarDays}
           iconClass="bg-success/10 text-success"
         />
@@ -158,6 +166,10 @@ export function VendasClient() {
           icon={Hash}
           iconClass="bg-info/10 text-info"
         />
+      </div>
+
+      <div className="mb-4">
+        <MonthPicker value={ym} onChange={setYm} />
       </div>
 
       {isLoading ? (
@@ -174,9 +186,13 @@ export function VendasClient() {
             </Button>
           }
         />
+      ) : lista.length === 0 ? (
+        <p className="py-10 text-center text-muted-foreground">
+          Nenhuma venda {ym ? "neste mês" : "registrada"}.
+        </p>
       ) : (
         <div className="space-y-3">
-          {vendas.map((v) => (
+          {lista.map((v) => (
             <div
               key={v.id}
               className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
