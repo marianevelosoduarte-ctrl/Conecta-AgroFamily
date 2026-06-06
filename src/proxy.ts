@@ -12,7 +12,10 @@ export default auth((req) => {
     pathname.startsWith("/login") ||
     pathname.startsWith("/cadastro") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/cadastro");
+    pathname.startsWith("/api/cadastro") ||
+    // Arquivos do PWA precisam ser acessíveis sem login (senão não instala)
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js";
 
   if (isPublic) {
     // Já logado tentando ver login/cadastro → manda pro app
@@ -37,6 +40,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
