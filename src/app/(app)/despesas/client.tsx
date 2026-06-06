@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { onlineManager, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Plus,
   Receipt,
@@ -111,9 +112,15 @@ export function DespesasClient() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const offline = !onlineManager.isOnline();
     const onDone = { onSuccess: () => setOpen(false) };
     if (editingId) update.mutate({ id: editingId, form }, onDone);
     else create.mutate(form, onDone);
+    // Offline: a confirmação só vem ao sincronizar — fecha já e avisa.
+    if (offline) {
+      setOpen(false);
+      toast.success("Salvo no aparelho. Será enviado quando a internet voltar.");
+    }
   }
 
   const saving = create.isPending || update.isPending;
@@ -337,10 +344,12 @@ export function DespesasClient() {
         title="Excluir despesa?"
         description={deleteTarget ? `"${deleteTarget.descricao}" será removida.` : ""}
         loading={remove.isPending}
-        onConfirm={() =>
-          deleteTarget &&
-          remove.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
-        }
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const offline = !onlineManager.isOnline();
+          remove.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+          if (offline) setDeleteTarget(null);
+        }}
       />
     </div>
   );

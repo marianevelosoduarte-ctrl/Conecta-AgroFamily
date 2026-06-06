@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Menu, LogOut } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { SyncStatus } from "@/components/layout/sync-status";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NAV_ITEMS } from "./nav-items";
@@ -55,8 +56,11 @@ export function AppShell({ userName, propriedadeNome, children }: AppShellProps)
             <p className="truncate text-xs text-muted-foreground">{propriedadeNome}</p>
           </div>
 
-          <div className="ml-auto lg:hidden">
-            <Logo size={32} showText={false} />
+          <div className="ml-auto flex items-center gap-3">
+            <SyncStatus />
+            <div className="lg:hidden">
+              <Logo size={32} showText={false} />
+            </div>
           </div>
         </header>
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Cliente, Venda, VendaFormValues } from "./types";
+
+type MutateOpts = { onSuccess?: () => void };
 
 export function useVendas() {
   return useQuery<Venda[]>({
@@ -31,7 +32,9 @@ function buildPayload(f: VendaFormValues) {
     produto: f.produto.trim(),
     quantidade: f.quantidade ? parseFloat(String(f.quantidade).replace(",", ".")) : 0,
     unidade: f.unidade || null,
-    valorUnitario: f.valorUnitario ? parseFloat(String(f.valorUnitario).replace(",", ".")) : 0,
+    valorUnitario: f.valorUnitario
+      ? parseFloat(String(f.valorUnitario).replace(",", "."))
+      : 0,
     data: f.data,
     formaPagamento: f.formaPagamento,
     clienteId: f.clienteId || null,
@@ -39,76 +42,41 @@ function buildPayload(f: VendaFormValues) {
   };
 }
 
+type VendaPayload = ReturnType<typeof buildPayload>;
+
+/* Mutações resumíveis (offline-first) — lógica em registerOfflineMutations. */
 export function useVendaMutations() {
-  const qc = useQueryClient();
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["vendas"] });
-    qc.invalidateQueries({ queryKey: ["dashboard"] });
+  const create = useMutation<Venda, Error, VendaPayload>({
+    mutationKey: ["vendas", "create"],
+  });
+  const update = useMutation<Venda, Error, { id: string; payload: VendaPayload }>({
+    mutationKey: ["vendas", "update"],
+  });
+  const remove = useMutation<void, Error, { id: string }>({
+    mutationKey: ["vendas", "delete"],
+  });
+
+  return {
+    create: {
+      mutate: (form: VendaFormValues, opts?: MutateOpts) =>
+        create.mutate(buildPayload(form), opts),
+      isPending: create.isPending,
+    },
+    update: {
+      mutate: (vars: { id: string; form: VendaFormValues }, opts?: MutateOpts) =>
+        update.mutate({ id: vars.id, payload: buildPayload(vars.form) }, opts),
+      isPending: update.isPending,
+    },
+    remove: {
+      mutate: (id: string, opts?: MutateOpts) => remove.mutate({ id }, opts),
+      isPending: remove.isPending,
+    },
   };
-
-  const create = useMutation<Venda, Error, VendaFormValues>({
-    mutationFn: async (f) => {
-      const res = await fetch("/api/vendas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload(f)),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao salvar");
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success("Venda registrada.");
-      invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const update = useMutation<Venda, Error, { id: string; form: VendaFormValues }>({
-    mutationFn: async ({ id, form }) => {
-      const res = await fetch(`/api/vendas/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload(form)),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao salvar");
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success("Venda atualizada.");
-      invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const remove = useMutation<void, Error, string>({
-    mutationFn: async (id) => {
-      const res = await fetch(`/api/vendas/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao excluir");
-    },
-    onSuccess: () => {
-      toast.success("Venda excluída.");
-      invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  return { create, update, remove };
 }
 
 /** Cria um cliente rapidamente (usado direto no formulário de venda). */
 export function useCreateCliente() {
-  const qc = useQueryClient();
   return useMutation<Cliente, Error, { nome: string; telefone?: string }>({
-    mutationFn: async (data) => {
-      const res = await fetch("/api/clientes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao salvar cliente");
-      return res.json();
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["clientes"] }),
-    onError: (e) => toast.error(e.message),
+    mutationKey: ["clientes", "create"],
   });
 }

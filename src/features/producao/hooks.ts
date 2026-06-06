@@ -1,8 +1,9 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Producao, ProducaoFormValues } from "./types";
+
+type MutateOpts = { onSuccess?: () => void };
 
 export function useProducoes() {
   return useQuery<Producao[]>({
@@ -32,58 +33,34 @@ function buildPayload(f: ProducaoFormValues) {
   };
 }
 
+type ProducaoPayload = ReturnType<typeof buildPayload>;
+
+/* Mutações resumíveis (offline-first) — lógica em registerOfflineMutations. */
 export function useProducaoMutations() {
-  const qc = useQueryClient();
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["producoes"] });
-    qc.invalidateQueries({ queryKey: ["dashboard"] });
+  const create = useMutation<Producao, Error, ProducaoPayload>({
+    mutationKey: ["producoes", "create"],
+  });
+  const update = useMutation<Producao, Error, { id: string; payload: ProducaoPayload }>({
+    mutationKey: ["producoes", "update"],
+  });
+  const remove = useMutation<void, Error, { id: string }>({
+    mutationKey: ["producoes", "delete"],
+  });
+
+  return {
+    create: {
+      mutate: (form: ProducaoFormValues, opts?: MutateOpts) =>
+        create.mutate(buildPayload(form), opts),
+      isPending: create.isPending,
+    },
+    update: {
+      mutate: (vars: { id: string; form: ProducaoFormValues }, opts?: MutateOpts) =>
+        update.mutate({ id: vars.id, payload: buildPayload(vars.form) }, opts),
+      isPending: update.isPending,
+    },
+    remove: {
+      mutate: (id: string, opts?: MutateOpts) => remove.mutate({ id }, opts),
+      isPending: remove.isPending,
+    },
   };
-
-  const create = useMutation<Producao, Error, ProducaoFormValues>({
-    mutationFn: async (f) => {
-      const res = await fetch("/api/producoes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload(f)),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao salvar");
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success("Produção registrada.");
-      invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const update = useMutation<Producao, Error, { id: string; form: ProducaoFormValues }>({
-    mutationFn: async ({ id, form }) => {
-      const res = await fetch(`/api/producoes/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload(form)),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao salvar");
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success("Produção atualizada.");
-      invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const remove = useMutation<void, Error, string>({
-    mutationFn: async (id) => {
-      const res = await fetch(`/api/producoes/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao excluir");
-    },
-    onSuccess: () => {
-      toast.success("Produção excluída.");
-      invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  return { create, update, remove };
 }

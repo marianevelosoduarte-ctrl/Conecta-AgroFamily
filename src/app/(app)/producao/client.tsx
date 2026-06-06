@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { onlineManager } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Plus, Sprout, Pencil, Trash2, Ruler, Wheat } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { KpiCard } from "@/components/ui/kpi-card";
@@ -85,9 +87,14 @@ export function ProducaoClient() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const offline = !onlineManager.isOnline();
     const onDone = { onSuccess: () => setOpen(false) };
     if (editingId) update.mutate({ id: editingId, form }, onDone);
     else create.mutate(form, onDone);
+    if (offline) {
+      setOpen(false);
+      toast.success("Salvo no aparelho. Será enviado quando a internet voltar.");
+    }
   }
 
   const saving = create.isPending || update.isPending;
@@ -330,10 +337,12 @@ export function ProducaoClient() {
         title="Excluir produção?"
         description={deleteTarget ? `"${deleteTarget.cultura}" será removida.` : ""}
         loading={remove.isPending}
-        onConfirm={() =>
-          deleteTarget &&
-          remove.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
-        }
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const offline = !onlineManager.isOnline();
+          remove.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+          if (offline) setDeleteTarget(null);
+        }}
       />
     </div>
   );

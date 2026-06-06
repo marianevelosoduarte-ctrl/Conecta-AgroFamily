@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { onlineManager } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Plus,
   ShoppingCart,
@@ -113,23 +115,34 @@ export function VendasClient() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const offline = !onlineManager.isOnline();
     let formToSave = form;
 
     // Cadastro rápido de cliente novo
-    if (form.clienteId === "new" && novoCliente.trim()) {
-      try {
-        const c = await createCliente.mutateAsync({ nome: novoCliente.trim() });
-        formToSave = { ...form, clienteId: c.id };
-      } catch {
-        return;
+    if (form.clienteId === "new") {
+      if (offline) {
+        // Sem internet não dá pra obter o id do cliente novo: salva sem vincular.
+        formToSave = { ...form, clienteId: "" };
+        toast.message("Sem internet: a venda será salva sem vincular o novo cliente.");
+      } else if (novoCliente.trim()) {
+        try {
+          const c = await createCliente.mutateAsync({ nome: novoCliente.trim() });
+          formToSave = { ...form, clienteId: c.id };
+        } catch {
+          return;
+        }
+      } else {
+        formToSave = { ...form, clienteId: "" };
       }
-    } else if (form.clienteId === "new") {
-      formToSave = { ...form, clienteId: "" };
     }
 
     const onDone = { onSuccess: () => setOpen(false) };
     if (editingId) update.mutate({ id: editingId, form: formToSave }, onDone);
     else create.mutate(formToSave, onDone);
+    if (offline) {
+      setOpen(false);
+      toast.success("Salvo no aparelho. Será enviado quando a internet voltar.");
+    }
   }
 
   const saving = create.isPending || update.isPending || createCliente.isPending;
@@ -370,10 +383,12 @@ export function VendasClient() {
         title="Excluir venda?"
         description={deleteTarget ? `Venda de "${deleteTarget.produto}" será removida.` : ""}
         loading={remove.isPending}
-        onConfirm={() =>
-          deleteTarget &&
-          remove.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
-        }
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const offline = !onlineManager.isOnline();
+          remove.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+          if (offline) setDeleteTarget(null);
+        }}
       />
     </div>
   );
