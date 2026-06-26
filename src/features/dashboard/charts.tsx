@@ -3,21 +3,24 @@
 import {
   Area,
   AreaChart,
-  Cell,
   LabelList,
   Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from "recharts";
 import { formatBRL } from "@/lib/utils";
 
-const PALETTE = ["#1F7A3D", "#F5A623", "#1890FF", "#FDD835", "#8B6F47", "#52C41A", "#D32F2F", "#9333EA"];
-
 const compact = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n);
+
+/** Valor em R$ sem centavos (mais limpo nos rótulos). */
+const brl0 = (n: number) =>
+  n.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
 
 /** Rótulo do valor acima de cada ponto (esconde zeros pra não poluir). */
 const valueLabel = (value: unknown) => {
@@ -81,7 +84,7 @@ export function ReceitaDespesaChart({
   );
 }
 
-/** Distribuição das despesas por categoria (rosca). */
+/** Despesas por categoria — ranking de barras (maior → menor). */
 export function CategoriasChart({
   data,
 }: {
@@ -94,29 +97,40 @@ export function CategoriasChart({
       </div>
     );
   }
+
+  // data já vem ordenado do maior pro menor (ver computeDashboard)
+  const max = Math.max(...data.map((c) => c.valor));
+
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
-        <Pie
-          data={data}
-          dataKey="valor"
-          nameKey="nome"
-          cx="50%"
-          cy="50%"
-          innerRadius={55}
-          outerRadius={90}
-          paddingAngle={2}
-        >
-          {data.map((_, i) => (
-            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value) => formatBRL(Number(value))}
-          contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 13 }}
-        />
-        <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="flex max-h-[280px] flex-col justify-center gap-2.5 overflow-y-auto pr-1">
+      {data.map((c) => {
+        // largura mínima de 4% pra categorias pequenas continuarem visíveis
+        const pct = max > 0 ? Math.max((c.valor / max) * 100, 4) : 0;
+        return (
+          <div
+            key={c.nome}
+            className="grid grid-cols-[5.5rem_1fr] items-center gap-2"
+          >
+            <span
+              className="truncate text-xs text-muted-foreground"
+              title={c.nome}
+            >
+              {c.nome}
+            </span>
+            <div className="flex items-center gap-2">
+              <div className="h-5 flex-1 overflow-hidden rounded bg-muted/50">
+                <div
+                  className="h-full rounded"
+                  style={{ width: `${pct}%`, backgroundColor: "#F5A623" }}
+                />
+              </div>
+              <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">
+                {brl0(c.valor)}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
