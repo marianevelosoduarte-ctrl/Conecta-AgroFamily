@@ -10,6 +10,7 @@ import {
   KeyRound,
   Trash2,
   Sprout,
+  Plus,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { KpiCard } from "@/components/ui/kpi-card";
@@ -25,6 +26,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const EMPTY_NOVO = {
+  nome: "",
+  email: "",
+  senha: "",
+  role: "AGRICULTOR" as "AGRICULTOR" | "ADMIN",
+  propriedadeNome: "",
+  telefone: "",
+};
 
 interface AdminUser {
   id: string;
@@ -97,9 +114,34 @@ export function UsuariosClient({ currentUserId }: { currentUserId: string }) {
     onError: (e) => toast.error(e.message),
   });
 
+  const criar = useMutation<unknown, Error, typeof EMPTY_NOVO>({
+    mutationFn: async (form) => {
+      const res = await fetch("/api/admin/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Erro ao criar usuário");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success("Usuário criado.");
+      setNovoOpen(false);
+      setNovo(EMPTY_NOVO);
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const [senhaTarget, setSenhaTarget] = useState<AdminUser | null>(null);
   const [novaSenha, setNovaSenha] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [novoOpen, setNovoOpen] = useState(false);
+  const [novo, setNovo] = useState(EMPTY_NOVO);
+  const setNovoField = <K extends keyof typeof EMPTY_NOVO>(
+    k: K,
+    v: (typeof EMPTY_NOVO)[K]
+  ) => setNovo((f) => ({ ...f, [k]: v }));
 
   const stats = useMemo(() => {
     const admins = usuarios.filter((u) => u.role === "ADMIN").length;
@@ -111,6 +153,17 @@ export function UsuariosClient({ currentUserId }: { currentUserId: string }) {
       <PageHeader
         title="Usuários"
         description="Gerencie as contas que acessam o sistema"
+        action={
+          <Button
+            onClick={() => {
+              setNovo(EMPTY_NOVO);
+              setNovoOpen(true);
+            }}
+          >
+            <Plus className="h-5 w-5" />
+            Novo usuário
+          </Button>
+        }
       />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -227,6 +280,106 @@ export function UsuariosClient({ currentUserId }: { currentUserId: string }) {
           })}
         </div>
       )}
+
+      {/* Novo usuário */}
+      <Dialog open={novoOpen} onOpenChange={setNovoOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo usuário</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              criar.mutate(novo);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="n-nome">Nome</Label>
+              <Input
+                id="n-nome"
+                required
+                placeholder="Nome completo"
+                value={novo.nome}
+                onChange={(e) => setNovoField("nome", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="n-email">E-mail</Label>
+              <Input
+                id="n-email"
+                type="email"
+                required
+                placeholder="email@exemplo.com"
+                value={novo.email}
+                onChange={(e) => setNovoField("email", e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="n-senha">Senha</Label>
+                <Input
+                  id="n-senha"
+                  type="text"
+                  autoComplete="off"
+                  required
+                  minLength={6}
+                  placeholder="Mínimo 6 caracteres"
+                  value={novo.senha}
+                  onChange={(e) => setNovoField("senha", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Papel</Label>
+                <Select
+                  value={novo.role}
+                  onValueChange={(v) => setNovoField("role", v as "ADMIN" | "AGRICULTOR")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AGRICULTOR">Agricultor</SelectItem>
+                    <SelectItem value="ADMIN">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="n-prop">Propriedade (opcional)</Label>
+                <Input
+                  id="n-prop"
+                  placeholder="Ex: Sítio São José"
+                  value={novo.propriedadeNome}
+                  onChange={(e) => setNovoField("propriedadeNome", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="n-tel">Telefone (opcional)</Label>
+                <Input
+                  id="n-tel"
+                  placeholder="(00) 00000-0000"
+                  value={novo.telefone}
+                  onChange={(e) => setNovoField("telefone", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setNovoOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={criar.isPending}>
+                {criar.isPending ? "Criando..." : "Criar usuário"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Redefinir senha */}
       <Dialog
