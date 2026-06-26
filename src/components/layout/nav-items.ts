@@ -7,6 +7,7 @@ import {
   Calculator,
   CloudSun,
   Settings,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -14,6 +15,8 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Visível apenas para administradores. */
+  adminOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -24,5 +27,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/simulador", label: "Simulador de Lucro", icon: Calculator },
   { href: "/clima", label: "Clima", icon: CloudSun },
+  { href: "/usuarios", label: "Usuários", icon: Users, adminOnly: true },
   { href: "/ajustes", label: "Ajustes", icon: Settings },
 ];

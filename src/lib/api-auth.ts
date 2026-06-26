@@ -34,3 +34,29 @@ export async function checkApiAuth() {
 
   return { authorized: true as const, response: null, session, propriedadeId };
 }
+
+/* Guard de rotas /api restritas a administradores. */
+export async function checkAdminApi() {
+  const session = await auth();
+
+  if (!session?.user) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json({ error: "Não autenticado" }, { status: 401 }),
+      session: null,
+    };
+  }
+
+  if (session.user.role !== "ADMIN") {
+    return {
+      authorized: false as const,
+      response: NextResponse.json(
+        { error: "Acesso restrito a administradores" },
+        { status: 403 }
+      ),
+      session,
+    };
+  }
+
+  return { authorized: true as const, response: null, session };
+}

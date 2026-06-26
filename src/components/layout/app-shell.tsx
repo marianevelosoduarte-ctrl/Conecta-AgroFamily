@@ -15,17 +15,18 @@ import { cn } from "@/lib/utils";
 interface AppShellProps {
   userName: string;
   propriedadeNome: string;
+  isAdmin?: boolean;
   children: React.ReactNode;
 }
 
-export function AppShell({ userName, propriedadeNome, children }: AppShellProps) {
+export function AppShell({ userName, propriedadeNome, isAdmin = false, children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar desktop */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-        <SidebarContent userName={userName} propriedadeNome={propriedadeNome} />
+        <SidebarContent userName={userName} propriedadeNome={propriedadeNome} isAdmin={isAdmin} />
       </aside>
 
       {/* Conteúdo */}
@@ -44,6 +45,7 @@ export function AppShell({ userName, propriedadeNome, children }: AppShellProps)
               <SidebarContent
                 userName={userName}
                 propriedadeNome={propriedadeNome}
+                isAdmin={isAdmin}
                 onNavigate={() => setMobileOpen(false)}
               />
             </SheetContent>
@@ -73,13 +75,16 @@ export function AppShell({ userName, propriedadeNome, children }: AppShellProps)
 function SidebarContent({
   userName,
   propriedadeNome,
+  isAdmin = false,
   onNavigate,
 }: {
   userName: string;
   propriedadeNome: string;
+  isAdmin?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <div className="flex h-full flex-col">
@@ -88,7 +93,7 @@ function SidebarContent({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link

@@ -24,6 +24,7 @@ export default async function AppLayout({
     <AppShell
       userName={session.user.name || "Agricultor"}
       propriedadeNome={propriedade?.nome || "Minha propriedade"}
+      isAdmin={session.user.role === "ADMIN"}
     >
       {children}
     </AppShell>
