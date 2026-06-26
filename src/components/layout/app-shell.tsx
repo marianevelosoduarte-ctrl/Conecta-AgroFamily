@@ -24,8 +24,8 @@ export function AppShell({ userName, propriedadeNome, isAdmin = false, children 
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar desktop */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+      {/* Sidebar desktop (fixa na viewport; só o menu rola por dentro) */}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
         <SidebarContent userName={userName} propriedadeNome={propriedadeNome} isAdmin={isAdmin} />
       </aside>
 
